@@ -37,7 +37,7 @@
 
 <!-- TODO: highlight code, and incrementally indicate lines -->
 
-\begin{lstlisting}[language=C]
+\begin{lstlisting}[language=C,escapechar=@]
 uint8_t c = a + b;
 if (c & 0x80) {
   c = (c & 0x7F) + 1;
@@ -47,12 +47,10 @@ return c;
 
 \column{.6\textwidth}
 
-<!--
-\pandocslide{1}{\includegraphics[width=\textwidth]{images/expr-1.pdf}}
-\pandocslide{2}{\includegraphics[width=\textwidth]{images/expr-2.pdf}}
-\pandocslide{3}{\includegraphics[width=\textwidth]{images/expr-3.pdf}}
--->
-\pandocslide{4}{\includegraphics[width=\textwidth]{images/expr-4.pdf}}
+\pandocslide{1}{\includegraphics[width=\textwidth]{images/expr-1.png}}
+\pandocslide{2}{\includegraphics[width=\textwidth]{images/expr-2.png}}
+\pandocslide{3}{\includegraphics[width=\textwidth]{images/expr-3.png}}
+\pandocslide{4}{\includegraphics[width=\textwidth]{images/expr-4.png}}
 
 \columnsend
 
@@ -70,7 +68,7 @@ return c;
 * Each with a concise formula summarizing the SAT problem
 
 \begin{center}
-$\forall x.~P$ or $\exists y. Q$
+$\forall x.~P$ or $\exists y.~Q$
 \end{center}
 
 * Cryptol specifications available online
@@ -156,8 +154,8 @@ $\exists x.~f(x) = a$ (for some known value $a$)
 * Discovering message given hash value (inversion)
 * Harder than finding a collision ($O(2^{n})$)
 
-<!-- TODO: gap -->
-* We want to show that it's \alert{hard} to solve these problems
+
+* We want to know that it's \alert{hard} to solve these problems
 
 # Finding Hash Collisions
 
@@ -181,7 +179,7 @@ $\exists x.~f(x) = a$ (for some known value $a$)
 Algorithm        Rounds    Security margin    Code
 ---------        ------    ---------------    ------------------------
 SHA-1                21       74% (21/80)     \filelink{SHA-0-1.cry}
-SHA-256              16       75% (16/64)     TODO
+SHA-256              16       75% (16/64)     \filelink{SHA265.cry}
 Keccak-256            2       92% (2/24)      TODO
 BLAKE-256             1       93% (1/14)      \filelink{blake256.cry}
 Groestl-256         0.5       95% (0.5/10)    N/A
@@ -272,7 +270,7 @@ $\forall m, k.~D(E(m, k), k) = m$
 * For a block cipher with encryption function $E$, decryption $D$
 * Easy to show for many ciphers
     * DES (TODO: time) \infile{DES.cry}
-    * 3DES (TODO: time) \infile{TripleDES.cry}
+    * 3DES (TODO: time) \infile{3DES.cry}
     * SIMON (TODO: time) \infile{simon.cry}
     * Speck (TODO: time) \infile{speck.cry}
 * Hard to show for AES (at least with encodings and solvers we've tried)
@@ -284,23 +282,39 @@ $\forall m, k.~D(E(m, k), k) = m$
 $\forall x.~f(x) = g(x)$
 \end{center}
 
-<!-- TODO: revisit this slide -->
-
 * Two functions give equivalent output for all inputs
 * AIGs give distinct benefits over direct CNF creation
+    * Intuitive construction
+    * Sharing subterms reduces overall expression size
     * SAT sweeping helps identify candidate equivalences
         * Especially effective for cryptography
-    * Sharing subterms reduces overall expression size
-    * Intuitive construction
     * Use best available SAT solver for final phase
+* Works on many cryptographic primitives, including AES (~10m)
+  \infile{AES-eq.saw} (TODO)
+
+# Equivalence Checking Illustrated
+
+Image credit: A. Biere, *SAT in Hardware Formal Verification*
+
+\pandocslide{1}{\includegraphics[height=0.9\textheight]{images/Block1.pdf}}
+\pandocslide{2}{\includegraphics[height=0.9\textheight]{images/Block2.pdf}}
+\pandocslide{3}{\includegraphics[height=0.9\textheight]{images/Block3.pdf}}
+\pandocslide{4}{\includegraphics[height=0.9\textheight]{images/Block4.pdf}}
+
+# Compositional Equivalence Checking: Motivation
+
+\includegraphics[width=\textwidth]{images/ECC.pdf}
 
 # Compositional Equivalence Checking
 
-* TODO: ECDSA and Tower of Babel image
-* SMT comes in handy here (or at least UFs)
-* TODO: Show monolithic vs. grafting (w/ shared terms) vs. UFs
-    * Grafting: triangles eventually overlapping
-    * UFs: triangles with pieces incrementally removed
+* Key tool: uninterpreted functions
+* Symbolic execution turns imperative code into functional code
+    * So procedure calls can be uninterpreted functions
+    * \alert{If} we know all inputs and outputs
+* Used for checking equivalence between Cryptol and Java ECDSA
+    * Takes around 5 minutes to run
+    * Takes ~1500 lines of script
+    * ABC for leaves, rewriting + Z3 for higher layers
 
 # Linear Cryptanalysis
 
@@ -356,15 +370,15 @@ $\forall x.~f(x) = g(x)$
 
 * S-boxes intended to unpredictably substitute bits
     * Ideally indistinguishable from a random function
-    * But, representable as a boolean circuit
-    * A good S-box should be hard to reduce to a simple circuit, but some are
-      still better
+    * But in practice representable as a short program using only linear
+      operations
 * Generating optimal S-boxes:
-    * or any function on a small domain
+    * Or any function on a small domain
     * $\exists p.~\llbracket{}p\rrbracket{}(x_{0}) = y_{0} \wedge \dots \wedge
       \llbracket{}p\rrbracket{}(x_{n}) = y_{n}$
-    * TODO: do this in Cryptol
-* TODO: comment on best published results doing this
+* Fuhs *et al.* found a 23-instruction program for the AES S-box (TODO: cite)
+    * Less than a minute with MiniSat
+    * Proving unsatisfiability of 22 instructions took 106 hours (CryptoMiniSat)
 
 # Creating Code: General Synthesis
 
@@ -375,7 +389,6 @@ $\forall x.~f(x) = g(x)$
 * Generally, a hard problem
     * But QBF solvers are getting powerful
     * Many papers in SMT community about this problem recently
-* TODO: CRC32 example?
 
 # Other Examples
 
