@@ -1,0 +1,24 @@
+// Author: Sean Weaver <weaversa@gmail.com>
+
+//r = 13
+diff : {r} (fin r, r>=1) => [32] -> [r][16] -> Bit
+diff wi zs = ((xr == xs@`r) && (yr == ys@`r) && p0 && p1 && (wf == wi))
+  where
+    [x0,y0] = [0,1]
+    [xr,yr] = [`0x100,0]
+    xs = [x0] # [ yi ^ zi ^ (xi <<< 2) | xi <- xs | yi <- ys | zi <- zs ]
+    ys = [y0] # xs
+    varibits   = [ (~(xi <<< 1)) && (~(xi <<< 8)) | xi <- xs ]
+    doublebits = [ (xi <<< 8) && (~(xi <<< 1)) && (xi >>> 6) | xi <- xs ]
+    p0 = [ zi && v | zi <- zs | v <- varibits ] == zero
+    p1 = [ (zi ^ (zi >>> 7)) && d | zi <- zs | d <- doublebits ] == zero
+    ws = [ 16 - ((popcount v) + (popcount d)) | v <- varibits | d <- doublebits ]
+    wf = accum (tail (reverse ws))
+
+popcount : {a, b} (fin a, fin b, b>=1) => [a] -> [b]
+popcount x = counts!0
+  where counts = [0] # [(0#[b]) + c | b <- x | c <- counts ]
+
+accum : {a, b} (fin a, a>=1, Arith b) => [a]b -> b
+accum xs = ys!0
+  where ys = [zero] # [ x + y | x <- xs | y <- ys ]

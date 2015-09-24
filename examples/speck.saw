@@ -1,0 +1,24 @@
+import "speck.cry";
+
+let {{
+  key = [ 0x811a1d19f387b0ed
+        , 0x3be1d222c22f71a1
+        , 0x18dde695701ff636
+        , 0x6ec6c4450aaa96e5
+        ]
+  blk = (0x31e7edee461ad30b, 0x070b4b8a7174e525)
+  ct = Speck128_256 key blk
+}};
+
+print "Proving injectivity of Speck key expansion:";
+time (prove_print abc {{ injectiveExpandKey128_256 }});
+
+print "Proving consistency of Speck:";
+time (prove_print abc {{ correctSpeck128_256 }});
+
+print "Inverting Speck encryption:";
+time (sat_print abc {{ \pt -> Speck128_256 key pt == ct }});
+
+print "Running Speck encryption:";
+time (sat_print abc {{ \c -> Speck128_256 key blk == c }});
+

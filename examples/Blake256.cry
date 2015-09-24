@@ -1,0 +1,419 @@
+/*
+** BLAKE-256 specification
+** Author: Austin Seipp <aseipp@pobox.com>. Released in the Public Domain.
+**
+** Based on "The Hash Function Blake", Chapter 3
+*/
+module blake256 where
+
+/* -------------------------------------------------------------------------- */
+/* -- Implementation -------------------------------------------------------- */
+
+/* ---------------------------------- */
+/* -- Types and constants ----------- */
+
+type Chain   = [8][32]
+type Block   = [16][32]
+type Salt    = [4][32]
+type Counter = [2][32]
+type Hash    = [32][8]
+
+private
+  // The initial hash input value. BLAKE-256 uses the
+  // same 256-bit IV as SHA-256: they correspond to the
+  // first 32 bits of the fractional parts of the square
+  // roots of the first eight prime numbers.
+  iv : Chain
+  iv =
+    [ 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a
+    , 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+    ]
+
+  // The first digits of `pi`, used as constant words
+  // for the initial input state `v`.
+  u : [16][32]
+  u =
+    [ 0x243f6a88, 0x85a308d3, 0x13198a2e, 0x03707344
+    , 0xa4093822, 0x299f31d0, 0x082efa98, 0xec4e6c89
+    , 0x452821e6, 0x38d01377, 0xbe5466cf, 0x34e90c6c
+    , 0xc0ac29b7, 0xc97c50dd, 0x3f84d5b5, 0xb5470917
+    ]
+
+  // `sigma` is a set of permutations used inside `G` to mux
+  // the input values. It is specified as a set of 10
+  // permutations of the set {0..15}, however there may be
+  // more than 10 rounds. Thus we wrap around to a size of
+  // 16 which is sufficient.
+  sigma : [16][16][32]
+  sigma =
+    [ [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ]
+    , [ 14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3 ]
+    , [ 11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4 ]
+    , [ 7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8 ]
+    , [ 9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13 ]
+    , [ 2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9 ]
+    , [ 12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11 ]
+    , [ 13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10 ]
+    , [ 6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5 ]
+    , [ 10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0 ]
+    , [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ]
+    , [ 14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3 ]
+    , [ 11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4 ]
+    , [ 7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8 ]
+    , [ 9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13 ]
+    , [ 2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9 ]
+    ]
+
+/* ---------------------------------- */
+/* -- Compression function ---------- */
+
+// Page 38, "The Hash Function BLAKE"
+compress : Chain -> Block -> Salt -> Counter -> Chain
+compress h m s t = result
+  where
+    // Break inputs into distinct variables.
+    [ u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11, u12, u13, u14, u15 ] = u
+    [ m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15 ] = m
+    [ h0, h1, h2, h3, h4, h5, h6, h7 ] = h
+    [ s0, s1, s2, s3 ] = s
+    [ t0, t1 ] = t
+
+    // Initialization matrix, composed of the initial chaining value
+    // and part of the salt, counter, and initial IV `u`
+    [ v0,   v1,  v2,  v3 ] = [ h0, h1, h2, h3 ]
+    [ v4,   v5,  v6,  v7 ] = [ h4, h5, h6, h7 ]
+    [ v8,   v9, v10, v11 ] = [ s0 ^ u0, s1 ^ u1, s2 ^ u2, s3 ^ u3 ]
+    [ v12, v13, v14, v15 ] = [ t0 ^ u4, t0 ^ u5, t1 ^ u6, t1 ^ u7 ]
+    v = [ v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15 ]
+
+    // The G function, loosely based on ChaCha20's quarter round.
+    G : { i, r }
+        ( fin i,  7 >= i
+        , fin r, 13 >= r) => [4][32] -> [4][32]
+    G [ a0, b0, c0, d0 ] = [ a2, b2, c2, d2 ]
+      where
+        // For a given input `o` of size [16][32], a specific
+        // iteration 0 <= `i` <= 7, and a round 0 <= `r` <= 13,
+        // k0 calculates:
+        //     o[sigma[v][2*i]]
+        // There are only 10 sigma permutations, each containing
+        // a permutation of the set {0..15}, hence index `r` must be
+        // picked modulo 10 if r > 9. So we just extend `sigma` to
+        // a full size of 16.
+        //
+        // In other words, k0 picks a specific 32-bit block
+        // from 'o' after indexing into the `sigma` permutations once,
+        // and then picking a value from there, in the set {0..15}
+        //
+        // k1 is identical to k0, except it calculates
+        // o[sigma[v][(2*i)+1]], i.e if we're on iteration
+        // `i` = 7, then we get o[sigma[v][15]], hence the bound
+        // on `i`.
+        k0 o = o @ (z @ y) where
+          y = (`i * 2) : [566]
+          z = sigma @ (`r : [566])
+
+        k1 o = o @ (z @ y) where
+          y = (`i * 2)+1 : [566]
+          z = sigma @ (`r : [566])
+
+        // Bit banging the core loop. Note BLAKE2b uses a change of constants
+        // here for better ILP!
+        a1 = a0 + b0 + (k0 m ^ k1 u)
+        d1 = (d0 ^ a1) >>> 16
+        c1 = c0 + d1
+        b1 = (b0 ^ c1) >>> 12
+        a2 = a1 + b1 + (k1 m ^ k0 u)
+        d2 = (d1 ^ a2) >>> 8
+        c2 = c1 + d2
+        b2 = (b1 ^ c2) >>> 7
+
+    // A single round of the compression function consists of
+    // a set of column rounds, and a set of diagonal rounds, parameterized
+    // by the round number itself.
+    // This is inspired by the core of the ChaCha20 algorithm.
+    round : { r } (fin r, 13 >= r) => Block -> Block
+    round
+        [ x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15 ]
+      = [ z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, z11, z12, z13, z14, z15 ]
+      where
+        // Column round: given the input block, calculate
+        // the output block from the input organized 'column-wise',
+        // with the function G, indexes 0-3.
+        [ y0, y4, y8,  y12 ] = G`{0,r} [ x0, x4, x8,  x12 ]
+        [ y1, y5, y9,  y13 ] = G`{1,r} [ x1, x5, x9,  x13 ]
+        [ y2, y6, y10, y14 ] = G`{2,r} [ x2, x6, x10, x14 ]
+        [ y3, y7, y11, y15 ] = G`{3,r} [ x3, x7, x11, x15 ]
+        // Diagonal round: given the output of the column round,
+        // calculate the final output block from the column block
+        // organized 'diagonally', using the function G, indexes
+        // 4-7
+        [ z0, z5, z10, z15 ] = G`{4,r} [ y0, y5, y10, y15 ]
+        [ z1, z6, z11, z12 ] = G`{5,r} [ y1, y6, y11, y12 ]
+        [ z2, z7, z8,  z13 ] = G`{6,r} [ y2, y7, y8,  y13 ]
+        [ z3, z4, z9,  z14 ] = G`{7,r} [ y3, y4, y9,  y14 ]
+
+    // Next, run the `round` function over the input state
+    // successively, 14 times, with the initial input being
+    // the 'initialization matrix' `v` built above.
+    //
+    // Note that the message `m` is captured in the closure of `G`,
+    // hence this has a very nice, unrolled definition.
+    final : Block
+    // NOTE! The r13 here is changed to r0 to yield the version for
+    // which we can find collisions.
+    final = r0
+      where
+        r0  = round`{0} v
+        r1  = round`{1} r0
+        r2  = round`{2} r1
+        r3  = round`{3} r2
+        r4  = round`{4} r3
+        r5  = round`{5} r4
+        r6  = round`{6} r5
+        r7  = round`{7} r6
+        r8  = round`{8} r7
+        r9  = round`{9} r8
+        r10 = round`{10} r9
+        r11 = round`{11} r10
+        r12 = round`{12} r11
+        r13 = round`{13} r12
+
+    // Finalization: given the output of the 14 iterations of
+    // the round function, XOR the results with the original
+    // chain value `h{0..7`}, and the salt `s{0..3}`
+    f0 = h0 ^ s0 ^ (final @ 0) ^ (final @ 8)
+    f1 = h1 ^ s1 ^ (final @ 1) ^ (final @ 9)
+    f2 = h2 ^ s2 ^ (final @ 2) ^ (final @ 10)
+    f3 = h3 ^ s3 ^ (final @ 3) ^ (final @ 11)
+    f4 = h4 ^ s0 ^ (final @ 4) ^ (final @ 12)
+    f5 = h5 ^ s1 ^ (final @ 5) ^ (final @ 13)
+    f6 = h6 ^ s2 ^ (final @ 6) ^ (final @ 14)
+    f7 = h7 ^ s3 ^ (final @ 7) ^ (final @ 15)
+
+    // The resulting chain is a set of 8 32-bit values.
+    result : Chain
+    result = [ f0, f1, f2, f3, f4, f5, f6, f7 ]
+
+compressCollision h m1 m2 s t =
+  (m1 != m2) && (compress h m1 s t == compress h m2 s t)
+
+// Pad a block of data, and return the padded data,
+// as well as a list of 128-bit blocks for each 512-bit
+// block, specifying how much original data the corresponding
+// padded block contains.
+pad : { b, f, e, p }
+    ( f == b/446     // Divide by 446, as 512-66=446
+    , e == 512*(f+1) // Total length of resulting output
+    , p == e-(b+66)  // Total number of padding bits
+    /* Inferred constraints */
+    , fin b, fin e, fin p, 64 >= width b
+    ) => [b] -> ([e], [e/512][128])
+pad m = (result, lengths`{w=b,x=e})
+  // NOTE: The above equations might seem confusing, but step through
+  // them to understand. `e` is just the resulting size of the output,
+  // based on b/446. We divide the input width by 446 as we must account
+  // for the 66 bits which will always be added by the padding - two '1'
+  // bits and a 64-bit little endian number. `p` is the number of
+  // padding bits. `e` is the total number of bits in the output
+  // and is always a multiple of 512.
+  //
+  // Similarly, the second value of the resulting tuple has a type
+  // `[e/512][128]` specifying it will return exactly N values,
+  // where N is the number of 512-bit blocks in the output.
+  where
+    // The result is given by padding the message with a 1 bit,
+    // 'p' zero bits, a 1 bit, and a 64-bit integer representing
+    // the input width.
+    result : [e]
+    result = m # [True] # (zero : [p]) # [True] # (width m : [64])
+
+    // Calculate the amount of individual data of every
+    // individual 512-bit block in the output, and build
+    // a list of them.
+    lengths : { w, x, y, z }
+            ( fin y, y == x/512     // There are `y` total output blocks
+            , fin z, z == w/512     // There are `z` blocks of 512-bits of data
+            /* Inferred constraints */
+            , fin w, fin x, y >= 1+z, y >= 1
+            ) => [y][128]
+    lengths = res
+      where
+        // There were 'z' full blocks of data, therefore we can take a list
+        // representing [ 512, 1024, 1536, 2048, ... ] to represent the
+        // head of the result: the blocks of data that were full.
+        // if e < 512, then `ls = []`
+        ls  = take`{z} (iterate (\x -> x + 512) 512) : [z][128]
+
+        // Take the total amount of 'full blocks', in terms of bit width.
+        // Example: there are 1020 bits of input data. Thus there is one
+        // full block of data (z = 1020/512 = 1), with 508 bits left over.
+        // therefore ls = [ 512 ], so end = 512.
+        //
+        // Note that `end` is lazy. Consider an input data of 511 bits. Then,
+        // z = 511/512 = 0, and thus, ls = []. Therefore this will error.
+        // However, in the event this occurs, `y == 1`, and thus `last`
+        // will properly chose `b as the final result to append to `ls`
+        // in res below. So we don't need to worry about this case.
+        end  = ls ! 0   : [128]
+
+        // Total remaining bits that did not fit cleanly in a block.
+        // Example: there are 1020 bits of input data. Therefore,
+        // end = 512, so rem = 1020 - 512 = 508 bits.
+        rem  = `b - end : [128]
+
+        // The final length. If there is only one block of data to
+        // pad (less than 512 bits of input), then the result is
+        // simply `b`. Otherwise, take the last value and add it
+        // to the remainder of bits (note above the laziness
+        // concerns with `end`).
+        //
+        // Example: there are 1020 bits of input data. Therefore,
+        // end = 512, rem = 508, so last = 1020, as y == 3.
+        last = if `y == (1:[width y]) then `b else end + rem
+
+        // The resulting lengths - the list of full, 512-bit blocks
+        // in an incrementing fashion [ 512, 1024, 1536, 2048, ... ],
+        // followed by the last block with any data. Concatenate any
+        // needed zeros onto the result.
+        //
+        // Note that `zero` must correctly have it's type mentioned here,
+        // otherwise SAW will get angry that this polymorphic value isn't
+        // properly constrained vs the type signature. It's easy to
+        // calculate the number of zero blocks needed: total-full-1
+        // Example: there are 1020 bits of input data. Therefore, there
+        // are 3 total output blocks.
+        // ls = [ 512 ], last = 1020, y == 3, z == 1, 3-1-1=1, so
+        // 1 final block of zeros.
+        res = ls # [last] # (zero : [y-z-1][128])
+
+// Hash an arbitrary-length input value to a resulting 32-bit hash
+// value, given a salt. The salt may be zero.
+blake256 : { n, b, f, p }
+         ( b == n*8       // Total width of the input
+         , f == b/446     // Divide by 446, as 512-66=446
+         , p == 512*(f+1) // Total length of resulting padded input
+         /* Inferred constraints */
+         , fin b, fin p, 64 >= width b
+         ) => Salt -> [n][8] -> Hash
+blake256 salt in = result
+  where
+    // Pad the input appropriately...
+    (padded, lengths1) = pad (join in : [b]) : ([p], [p/512][128])
+
+    // ... serialize the bottom 64-bits of the counters ...
+    lengths2 = map cut lengths1
+      where
+        cut : [128] -> Counter
+        cut xs = half (split xs)
+
+        half : [4][32] -> Counter
+        half [ c0, c1, c2, c3 ] = [ c3, c2 ]
+
+    // ... and split into 512-bit blocks
+    blocks = split padded        : [p/512][512]
+
+    // Finally, calculate the result hash
+    result : Hash
+    result = split (join r) // Munge to convert Chain -> Hash
+      where
+        // Get the last value of the 'vs' sequence, to get the final
+        // chain, and thus hash value after all input blocks have
+        // been consumed from the input.
+        r = vs ! 0
+        // A list of chains, starting with the initial `iv`, and ending
+        // with the final chain after compressing all the input message
+        // blocks.
+        vs : [_]Chain
+        vs = [iv] # [ compress v (split b) salt l // Compress a block...
+                    | v <- vs                     // Given an IV...
+                    | b <- blocks                 // and an input block...
+                    | l <- lengths2               // and the size of this block
+                    ]
+
+/* -------------------------------------------------------------------------- */
+/* -- Theorems, tests ------------------------------------------------------- */
+
+// Tests are private
+private
+  // 'The Hash Function BLAKE', pg 40
+  pad00 = pad (zero : [8]) == (join m, [join l])
+    where
+      m = [ 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+          , 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+          , 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+          , 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+          , 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+          , 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+          , 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01
+          , 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08 ]
+      l = [ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+          , 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08 ]
+
+  // 'The Hash Function BLAKE', Appendix A, pg 195
+  compress00 = compress i (split m) zero c == r
+    where
+      r  = [ 0x0ce8d4ef, 0x4dd7cd8d, 0x62dfded9, 0xd4edb0a7
+           , 0x74ae6a41, 0x929a74da, 0x23109e8f, 0x11139c87 ]
+      i  = [ 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a
+           , 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19 ]
+
+      (m,l) = pad (zero : [8])
+      c  = reverse (split (drop`{64} (l @ 0)))
+
+  // 'The Hash Function BLAKE', Appendix A, pg 196
+  compress01 = (compression1 == r1) && (compression2 == r2)
+    where
+      r1  = [ 0xb5bfb2f9, 0x14cfcc63, 0xb85c549c, 0xc9b4184e
+            , 0x67dfc6ce, 0x29e9904b, 0xd59ee74e, 0xfaa9c653 ]
+      i1  = [ 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a
+            , 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19 ]
+      c1  = [ 0x00000200, 0x00000000 ]
+
+      compression1 = compress i1 zero zero c1
+
+      r2 = [ 0xd419bad3, 0x2d504fb7, 0xd44d460c, 0x42c5593f
+           , 0xe544fa4c, 0x135dec31, 0xe21bd9ab, 0xdcc22d41 ]
+      m2 = [ 0x00000000, 0x00000000, 0x80000000, 0x00000000
+           , 0x00000000, 0x00000000, 0x00000000, 0x00000000
+           , 0x00000000, 0x00000000, 0x00000000, 0x00000000
+           , 0x00000000, 0x00000001, 0x00000000, 0x00000240 ]
+      c2 = [ 0x00000240, 0x00000000 ]
+
+      compression2 = compress compression1 m2 zero c2
+
+  // Based on the source code for blake256.c, and also from
+  // the compression test vectors (compress00)
+  hash01 = blake256 zero (zero : [1][8]) == r
+    where
+      r = [ 0x0c, 0xe8, 0xd4, 0xef, 0x4d, 0xd7, 0xcd, 0x8d
+          , 0x62, 0xdf, 0xde, 0xd9, 0xd4, 0xed, 0xb0, 0xa7
+          , 0x74, 0xae, 0x6a, 0x41, 0x92, 0x9a, 0x74, 0xda
+          , 0x23, 0x10, 0x9e, 0x8f, 0x11, 0x13, 0x9c, 0x87
+          ]
+
+property allTestsPass =
+  ([ // Basic tests
+     pad00, compress00, compress01
+     // Full hash function test vectors
+   , hash01
+   ] : [_]Bit) == ~zero // All test bits should equal one
+
+/* -------------------------------------------------------------------------- */
+/* -- Private utilities ----------------------------------------------------- */
+
+private
+  // Map a function over a list.
+  map : { a, b, c }
+        (a -> b) -> [c]a -> [c]b
+  map f xs = [ f x | x <- xs ]
+
+  // Map a function iteratively over a seed value, producing an infinite
+  // list of successive function applications:
+  //
+  // iterate f 0 == [ 0, f 0, f (f 0), f (f (f 0)), ... ]
+  iterate : { a } (a -> a) -> a -> [inf]a
+  iterate f x = [x] # [ f v | v <- iterate f x ]
+    where
+      // NB: Needs a binded name in order to tie the recursive knot.
+      xs = [x] # [ f v | v <- xs ]

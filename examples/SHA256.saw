@@ -1,0 +1,5 @@
+import "SHA256.cry";
+
+time (sat_print abc {{ \(m1:[1][16][32]) m2 ->
+  m1 != m2 && SHA256' m1 == SHA256' m2
+}});

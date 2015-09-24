@@ -1,0 +1,3 @@
+import "blake256.cry";
+
+time (sat_print abc {{ compressCollision }});

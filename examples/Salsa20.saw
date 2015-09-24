@@ -1,0 +1,3 @@
+import "Salsa20.cry";
+
+time (prove_print abc {{ Salsa20_has_no_collisions }});

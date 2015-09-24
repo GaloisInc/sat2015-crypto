@@ -1,0 +1,23 @@
+import "AES.cry";
+
+let {{
+  aesExtract x = aesEncrypt (pt,key)
+    // This input transform is specific to the SAW backend.
+    // See ':/intTests/test0017_lss_aig' for discussion of
+    // the IO encodings for different backends.
+    where [pt,key] = split x
+}};
+
+let main = do {
+  print "Loading LLVM implementation";
+  f <- time (load_aig "aes.aig");
+
+  print "Bitblasting Cryptol implementation";
+  g <- time (bitblast {{ aesExtract }});
+
+  print "Checking equivalence";
+  res <- time (cec f g);
+  print res;
+
+  write_aig "aes-ref.aig" {{ aesExtract }};
+};
