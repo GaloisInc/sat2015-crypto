@@ -228,6 +228,8 @@ return c;
 \item
   Transalg (Russian Academy of Sciences) \cite{transalg}
 \item
+  C++ operator overloading (several) \cite{jovanovic2005logical}
+\item
   Cryptol and the Software Analysis Workbench (SAW) (Galois)
 
   \begin{itemize}
@@ -236,9 +238,9 @@ return c;
     Cryptol for describing algorithms concisely
   \item
     SAW for proving properties about them
+  \item
+    Both freely available!
   \end{itemize}
-\item
-  TODO: others
 \end{itemize}
 
 \end{frame}
@@ -345,9 +347,8 @@ $\forall x, y.~x \neq y \Rightarrow f(x) \neq f(y)$
   \item
     ABC can find collision (0.017s), prove fixed version (0.010s)
   \end{itemize}
-\item
-  Dörre and Klebanov used a different approach to prove fixed code
-  \cite{dorre2015prng}
+\item Dörre and Klebanov used a different approach to prove the fixed code
+  injective \cite{dorre2015prng}
 
   \begin{itemize}
   \tightlist
@@ -413,8 +414,8 @@ $\exists x.~f(x) = a$ (for some known value $a$)
 
 \begin{itemize}
 \tightlist
-\item
-  Mironov and Zhang analyzed collisions in MD4, MD5, SHA-0
+\item Mironov and Zhang analyzed collisions in MD4, MD5, and SHA-0
+  \cite{mironov2006hash}
 
   \begin{itemize}
   \tightlist
@@ -456,7 +457,7 @@ $\exists x.~f(x) = a$ (for some known value $a$)
 \item
   No preimages discoverable by SAT on full algorithms
 \item
-  Homsirikamol et al. found preimages for fewer rounds
+  Homsirikamol et al. found preimages for fewer rounds \cite{homsirikamol2012sha3}
 
   \begin{itemize}
   \tightlist
@@ -498,7 +499,7 @@ Skein-512-256 & 1 & 99\% (1/72) & N/A\tabularnewline
   \begin{itemize}
   \tightlist
   \item
-    Therefore, invertable (for a fixed key)
+    Therefore, invertible (for a fixed key)
   \end{itemize}
 \item
   Often built as a substitution-permutation network
@@ -585,8 +586,8 @@ $\forall x, y.~x \neq y \Rightarrow f(x) \neq f(y)$
     Key expansion not injective in ZUC 1.4 (0.5s) \infile{zuc.saw}
   \item
     Provably fixed in ZUC 1.5 (0.6s) \infile{zuc.saw}
-  \item
-    Originally shown with custom search procedure taking 3m
+  \item Originally shown with custom search procedure taking 3m
+    \cite{wang2012zuc}
   \end{itemize}
 \item
   \alert{Not injective} for DES!
@@ -669,7 +670,7 @@ $\forall m, k.~D(E(m, k), k) = m$
   \item
     3DES (8s) \infile {3DES.saw}
   \item
-    SIMON (128-256) (6.2m) \infile{simon.saw}
+    SIMON (6.2m) \infile{simon.saw}
   \item
     Speck (2.7m) \infile{speck.saw}
   \end{itemize}
@@ -710,9 +711,8 @@ $\forall x.~f(x) = g(x)$
   \item
     Use best available SAT solver for final phase
   \end{itemize}
-\item
-  Works on many cryptographic primitives, including AES
-  (\textasciitilde{}6.4m) \infile{AES-eq.saw}
+\item Works on many core cryptographic primitives, including AES (on a single
+  block) (\textasciitilde{}6.4m) \infile{AES-eq.saw}
 \end{itemize}
 
 \end{frame}
@@ -748,16 +748,15 @@ $\forall x.~f(x) = g(x)$
   \item
     \alert{If} we know all inputs and outputs
   \end{itemize}
-\item
-  Used for checking equivalence between Cryptol and Java ECDSA
+\item Used for checking equivalence between Cryptol and Java ECDSA
+  implementations
 
   \begin{itemize}
   \tightlist
   \item
     Takes around 5 minutes to run
-  \item
-    Takes \textasciitilde{}1500 lines of script (mostly I/O mapping, a
-    few rewrite rules)
+  \item Takes \textasciitilde{}1500 lines of script (mostly I/O mapping, rewrite
+    rules)
   \item
     ABC for leaves, rewriting + Z3 for higher layers
   \end{itemize}
@@ -807,7 +806,7 @@ $\forall x.~f(x) = g(x)$
   A \alert{differential characteristic} is a set of differences as they
   traverse a path through the algorithm
 \item
-  Can use \#SAT to calculuate the distributions of differential
+  Can use \#SAT to calculate the distributions of differential
   characteristics
 \end{itemize}
 
@@ -820,14 +819,14 @@ $\forall x.~f(x) = g(x)$
 \item
   SIMON is a lightweight block cipher published recently
 \item
-  Kölbl \emph{et al.} used SAT for linear and differential cryptanlysis
-  of SIMON \cite{kolbl2015simon} \infile{simon-diff.saw}
+  Kölbl \emph{et al.} used SAT for linear and differential cryptanalysis of
+  SIMON \cite{kolbl2015simon} \infile{simon-diff.saw}
 \item
   Using \#SAT to calculate differential characteristic distributions
 \item
   Not direct analysis of code, but of manually-derived simplification
 \item
-  Serves as an additonal tool for cryptanalysis, not push-putton
+  Serves as an additional tool for cryptanalysis, not push-button
 \item
   Suggests slightly different parameters possibly preferable to
   published numbers
@@ -859,7 +858,7 @@ $\forall x.~f(x) = g(x)$
 
 \end{frame}
 
-\begin{frame}{Using SAT for Side Channel Ananlysis}
+\begin{frame}{Using SAT for Side Channel Analysis}
 
 \begin{itemize}
 \tightlist
@@ -883,7 +882,7 @@ $\forall x.~f(x) = g(x)$
   Can use \alert{any internal variable} in the algorithm
 \item
   Hamming weights plus a handful of \((m, c)\) pairs enough to recover
-  AES key {[}@mohamed2012improved-sc{]}
+  AES key \cite{mohamed2012improved-sc}
 \end{itemize}
 
 \end{frame}
