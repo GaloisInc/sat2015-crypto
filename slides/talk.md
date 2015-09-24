@@ -24,7 +24,8 @@
     * Pseudo-random number generators (PRNGs)
 * Public-key algorithms representable, but trickier
     * Lots of number theory, including multiplication
-    * SMT can alleviate some of this (but tends to be slower bit-vectory things)
+    * SMT can alleviate some of this (but tends to be slower on bit-vectory
+      things)
 * We'll focus on primitives with type $\{0,1\}^{n} \rightarrow \{0,1\}^{m}$
 
 # Translating Algorithms to Propositional Logic {.fragile}
@@ -34,8 +35,6 @@
 \column{.4\textwidth}
 
 * A function from the ZUC stream cipher
-
-<!-- TODO: highlight code, and incrementally indicate lines -->
 
 \begin{lstlisting}[language=C,escapechar=@]
 uint8_t c = a + b;
@@ -53,7 +52,6 @@ return c;
 \pandocslide{4}{\includegraphics[width=\textwidth]{images/expr-4.png}}
 
 \columnsend
-
 
 # Specific tools
 
@@ -75,7 +73,7 @@ $\forall x.~P$ or $\exists y.~Q$
 
 * Analyzed using SAW + ABC
 
-* Cryptol or SAW file names mentioned in slides (e.g. \infile{file.cry})
+* Cryptol or SAW file names mentioned in slides (e.g. \infile{file.saw})
 
 \begin{center}
 \aurl{https://github.com/galoisinc/sat2015-crypto}
@@ -93,8 +91,6 @@ seed $\rightarrow$ pseudo-random function $\rightarrow$ pseudo-random value
 * But it's critical not to lose entropy from this source!
 
 # Injectivity of PRNG Seeding
-
-<!-- TODO: fonts -->
 
 * Bug in Android cryptographic PRNG discarded entropy
   * Intended: 160 bits of entropy, from system PRNG to SHA-1
@@ -122,7 +118,7 @@ $\forall x, y.~x \neq y \Rightarrow f(x) \neq f(y)$
 * Easily provable with SAT solver \infile{android-prng.saw}
     * Symbolic execution: Java code $\rightarrow$ AIG
     * Annotation on system RNG variables, input to SHA-1
-    * ABC can find collision (TODO: time), prove fixed version (TODO: time)
+    * ABC can find collision (0.017s), prove fixed version (0.010s)
 * Dörre and Klebanov used a different approach to prove fixed code
     * Information flow annotations on methods using a contract verification tool
       (KeY) and 95 manual proof steps
@@ -161,9 +157,9 @@ $\exists x.~f(x) = a$ (for some known value $a$)
 
 * Mironov and Zhang analyzed collisions in MD4, MD5, SHA-0
     * Direct translation of MD4 $\rightarrow$ $2^{22}$ solutions in $<$ 1h
-      <!-- (TODO: differential path here?)--> \infile{MD4.cry}
+      \infile{MD4.saw}
     * Collision on full MD5 in around 100h
-        * Reduced rounds much easier \infile{MD5.cry}
+        * Reduced rounds much easier \infile{MD5.saw}
         * Used differential path derived manually (more on this later)
     * Estimated around 3 million (2006-era) CPU hours for SHA-0
 * No known collisions on SHA-1 from this, but it may be a matter of time
@@ -178,10 +174,10 @@ $\exists x.~f(x) = a$ (for some known value $a$)
 
 Algorithm        Rounds    Security margin    Code
 ---------        ------    ---------------    ------------------------
-SHA-1                21       74% (21/80)     \filelink{SHA-0-1.cry}
-SHA-256              16       75% (16/64)     \filelink{SHA265.cry}
+SHA-1                21       74% (21/80)     \filelink{SHA-0-1.saw}
+SHA-256              16       75% (16/64)     \filelink{SHA265.saw}
 Keccak-256            2       92% (2/24)      TODO
-BLAKE-256             1       93% (1/14)      \filelink{blake256.cry}
+BLAKE-256             1       93% (1/14)      \filelink{blake256.saw}
 Groestl-256         0.5       95% (0.5/10)    N/A
 JH-256                2       96% (2/42)      N/A
 Skein-512-256         1       99% (1/72)      N/A
@@ -231,17 +227,16 @@ $\forall x, y.~x \neq y \Rightarrow f(x) \neq f(y)$
 \end{center}
 
 * Provable injectivity of SIMON, Salsa20 key expansion
-    * Several seconds with ABC \infile{simon.cry} \infile{Salsa20.cry}
+    * Several seconds with ABC \infile{simon.saw} \infile{Salsa20.saw}
 * Provable injectivity of AES key expansion
-    * A little under a minute with ABC \infile{AES.cry}
+    * A little under a minute with ABC \infile{AES.saw}
 * ZUC, a stream cipher for GSM, had a vulnerability
-    * Key expansion not injective in ZUC 1.4 (TODO: time) \infile{zuc.cry}
-    * Provably fixed in ZUC 1.5 (TODO: time) \infile{zuc.cry}
+    * Key expansion not injective in ZUC 1.4 (TODO: time) \infile{zuc.saw}
+    * Provably fixed in ZUC 1.5 (TODO: time) \infile{zuc.saw}
+    * Originally shown with custom search procedure taking 3m
 * \alert{Not injective} for DES!
-    * Can show in a fraction of a second \infile{DES.cry}
+    * Can show in a fraction of a second \infile{DES.saw}
     * Unaware of a published attack that uses this fact
-
-<!-- TODO: Speck -->
 
 # Encryption $\rightarrow$ Decryption
 
@@ -251,8 +246,8 @@ $\exists m.~E(m, k) = c$ for known $k$ and $c$
 
 * Decrypting using encryption code
 * This actually works!
-    * Relatively efficient for DES, 3DES, SIMON \infile{DES.cry}
-      \infile{3DES.cry} \infile{simon.cry}
+    * Relatively efficient for DES, 3DES, SIMON \infile{DES.saw}
+      \infile{3DES.saw} \infile{simon.saw}
     * Takes ~1.5min for one block of AES \infile{aes.saw}
 
 * Can also run the encryption directly:
@@ -269,12 +264,12 @@ $\forall m, k.~D(E(m, k), k) = m$
 
 * For a block cipher with encryption function $E$, decryption $D$
 * Easy to show for many ciphers
-    * DES (TODO: time) \infile{DES.cry}
-    * 3DES (TODO: time) \infile{3DES.cry}
-    * SIMON (TODO: time) \infile{simon.cry}
-    * Speck (TODO: time) \infile{speck.cry}
+    * DES (TODO: time) \infile{DES.saw}
+    * 3DES (TODO: time) \infile{3DES.saw}
+    * SIMON (TODO: time) \infile{simon.saw}
+    * Speck (TODO: time) \infile{speck.saw}
 * Hard to show for AES (at least with encodings and solvers we've tried)
-  \infile{AES.cry}
+  \infile{AES.saw}
 
 # Equivalence Checking
 
@@ -316,28 +311,34 @@ Image credit: A. Biere, *SAT in Hardware Formal Verification*
     * Takes ~1500 lines of script
     * ABC for leaves, rewriting + Z3 for higher layers
 
+<!-- TODO: smoother transition from Cryptol stuff to not Cryptol stuff -->
+
 # Linear Cryptanalysis
 
 * Attack on symmetric block ciphers
 * Known plaintext attack: assumes attacker has some set of $(m, c)$ pairs
 * Basic idea: can we approximate the encryption function by a linear function?
     * Where *linear* here means made up entirely of XOR operations
-* Any time the agrees with a linear function too often, this can ease
-  cryptanalysis
-* TODO: how is SAT applied? (TODO: review)
+* Any time the encryption function agrees with a linear function too often, this
+  can ease cryptanalysis
+* #SAT can be used to count how often it behaves linearly
   
 # Differential Cryptanalysis
 
 * Like linear cryptanalysis, known plaintext attack on symmetric block ciphers
 * Analysis of how differences in input affect differences in output
 * Disproportional effects can be exploitable
-* TODO: how is SAT applied? (TODO: review)
+* A \alert{differential characteristic} is a set of differences as they traverse
+  a path through the algorithm
+* #SAT can be used to calculuate the distributions of differential
+  characteristics
 
 # Cryptanalysis of SIMON
 
+* SIMON is a lightweight block cipher published recently
 * Kölbl *et al.* used SAT for linear and differential cryptanlysis of SIMON
-  (TODO: cite) \infile{simon-diff.cry}
-* Using #SAT to calculate distributions of differential characteristics
+  (TODO: cite) \infile{simon-diff.saw}
+* Using #SAT to calculate differential characteristic distributions
 * Not direct analysis of code, but of manually-derived simplification
 * Serves as an additonal tool for cryptanalysis, not push-putton
 * Suggests slightly different parameters possibly preferable to published
