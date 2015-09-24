@@ -1,4 +1,18 @@
-import "TripleDES.cry";
+import "3DES.cry";
+
+let {{
+    pt = 0x56789ABCDEF01234
+    k1 = 0x0123456789ABCDEF
+    k2 = 0xb273a114013f83f5
+    k3 = 0xb63051dba3805646
+    ct = blockEncrypt (k1, k2, k3, pt)
+}};
 
 print "Inverting 3DES encryption:";
-time (sat_print abc {{ enc_inv_B1 }});
+time (sat_print abc {{ \msg -> blockEncrypt (k1, k2, k3, msg) == ct }});
+
+print "Running 3DES encryption:";
+time (sat_print abc {{ \c -> blockEncrypt (k1, k2, k3, pt) == c }});
+
+print "Proving 3DES consistency:";
+time (prove_print abc {{ consistent }});

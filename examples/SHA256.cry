@@ -51,6 +51,7 @@ K = [ 0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x
  * Preprocessing (padding and parsing) for SHA256 : Section 5.1.1 and 5.2.1
  */
 
+/*
 preprocess : {msgLen,contentLen,chunks,padding}
      ( fin msgLen
      , 64 >= width msgLen                              // message width fits in a word
@@ -61,6 +62,7 @@ preprocess : {msgLen,contentLen,chunks,padding}
      )
      => [msgLen] -> [chunks][512]
 preprocess msg = split (msg # [True] # (zero:[padding]) # (`msgLen:[64]))
+*/
 
 /*
  * SHA256 Initial Hash Value :  Section 5.3.3
@@ -95,6 +97,23 @@ SHA256Compress H W = [as!0 + H@0, bs!0 + H@1, cs!0 + H@2, ds!0 + H@3, es!0 + H@4
     bs = take `{65} ([H@1] # as)
     as = take `{65} ([H@0] # [t1 + t2 | t1 <- T1 | t2 <- T2])
 
+SHA256Compress' : {r} ( 1 + min r (min r (min r (min r (min r 64)))) >= r
+                      , 1 + min (min r (min r (min r (min r 64)))) r >= r
+                      , min r (min r (min r (min r 64))) >= r
+                      , fin r) =>
+                  [8][32] -> [64][32] -> [8][32]
+SHA256Compress' H W = [as!0 + H@0, bs!0 + H@1, cs!0 + H@2, ds!0 + H@3, es!0 + H@4, fs!0 + H@5, gs!0 + H@6, hs!0 + H@7] where
+    T1 = [h + S1 e + Ch e f g  + k + w | h <- hs | e <- es | f <- fs | g <- gs | k <- K | w <- W]
+    T2 = [S0 a  + Maj a b c  | a <- as | b <- bs | c <- cs]
+    hs = take `{r} ([H@7] # gs)
+    gs = take `{r} ([H@6] # fs)
+    fs = take `{r} ([H@5] # es)
+    es = take `{r} ([H@4] # [d + t1 | d <- ds | t1 <- T1])
+    ds = take `{r} ([H@3] # cs)
+    cs = take `{r} ([H@2] # bs)
+    bs = take `{r} ([H@1] # as)
+    as = take `{r} ([H@0] # [t1 + t2 | t1 <- T1 | t2 <- T2])
+
 /*
  * The SHA256' function hashes a preprocessed sequence of blocks with the
  * compression function.  The SHA256 function hashes a sequence of bytes, and
@@ -102,13 +121,17 @@ SHA256Compress H W = [as!0 + H@0, bs!0 + H@1, cs!0 + H@2, ds!0 + H@3, es!0 + H@4
  * implementation to be verified.
  */
 
+// NOTE! This is modified to use only 16 rounds.
 SHA256' : {a} (fin a) => [a][16][32] -> [8][32]
 SHA256' blocks = hash!0 where
-    hash = [H0] # [SHA256Compress h (SHA256MessageSchedule b) | h <- hash | b <- blocks]
+    hash = [H0] # [SHA256Compress' `{r=17} h (SHA256MessageSchedule b) | h <- hash | b <- blocks]
 
+/*
 SHA256 : {a} (fin a, 64 >= width (8*a)) => [a][8] -> [256]
 SHA256 msg =   join (SHA256' [ split x | x <- preprocess(join msg)])
+*/
 
+/*
 property katsPass = ~zero == [test == kat | (test,kat) <- kats ]
 
 kats = [ (SHA256 "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
@@ -120,3 +143,4 @@ kats = [ (SHA256 "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
        // , (SHA256 [0x61 | i <- [1..1000000] : [_][32]]
        //   , 0xcdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0)
        ]
+*/

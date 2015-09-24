@@ -5,25 +5,27 @@ let {{
   arb = 0x580e6c313579acf28f5c54460264a1e1724992c87624d5b21157b6b038fa2982 #
         0x4f5ce5f7e5b2423023922dc3aa8ed396698dfdf353716c9e6c6664a037699a4d
 
-  p0_1 x = sha' False 17 [x] == sha' False 17 [arb]
-  p0_2 x = sha' False 18 [x] == sha' False 18 [arb]
-  p0_3 x = sha' False 19 [x] == sha' False 19 [arb]
-  p0_4 x = sha' False 20 [x] == sha' False 20 [arb]
-  p0_5 x = sha' False 21 [x] == sha' False 21 [arb]
+  p0_1 x y = sha' False 17 [x] == sha' False 17 [y] && x != y
+  p0_2 x y = sha' False 18 [x] == sha' False 18 [y] && x != y
+  p0_3 x y = sha' False 19 [x] == sha' False 19 [y] && x != y
+  p0_4 x y = sha' False 20 [x] == sha' False 20 [y] && x != y
+  p0_5 x y = sha' False 21 [x] == sha' False 21 [y] && x != y
 
-  p1_1 x = sha' True 17 [x] == sha' True 17 [arb]
-  p1_2 x = sha' True 18 [x] == sha' True 18 [arb]
-  p1_3 x = sha' True 19 [x] == sha' True 19 [arb]
-  p1_4 x = sha' True 20 [x] == sha' True 20 [arb]
-  p1_5 x = sha' True 21 [x] == sha' True 21 [arb]
+  p1_1 x y = sha' True 17 [x] == sha' True 17 [y] && x != y
+  p1_2 x y = sha' True 18 [x] == sha' True 18 [y] && x != y
+  p1_3 x y = sha' True 19 [x] == sha' True 19 [y] && x != y
+  p1_4 x y = sha' True 20 [x] == sha' True 20 [y] && x != y
+  p1_5 x y = sha' True 21 [x] == sha' True 21 [y] && x != y
 }};
 
-print "Inverting SHA-0 for 17, 18, 19, 20, and 21 rounds:";
-for [ {{ p0_1 }}, {{ p0_2 }}, {{ p0_3 }}, {{ p0_4 }}, {{ p0_5 }} ]
-  (\p -> time (sat_print abc p));
+print "Finding collision in SHA-1 for 20 rounds:";
+//for [ {{ p1_1 }}, {{ p1_2 }}, {{ p1_3 }}, {{ p1_4 }}, {{ p1_5 }} ]
+//  (\p -> time (sat_print abc p));
+time (sat_print abc {{ p1_4 }});
 
-print "Inverting SHA-1 for 17, 18, 19, 20, and 21 rounds:";
-for [ {{ p1_1 }}, {{ p1_2 }}, {{ p1_3 }}, {{ p1_4 }}, {{ p1_5 }} ]
-  (\p -> time (sat_print abc p));
+print "Finding collision in SHA-0 for 20 rounds:";
+//for [ {{ p0_1 }}, {{ p0_2 }}, {{ p0_3 }}, {{ p0_4 }}, {{ p0_5 }} ]
+//  (\p -> time (sat_print abc p));
+time (sat_print abc {{ p0_4 }});
 
 print "Done.";

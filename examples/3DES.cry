@@ -8,10 +8,16 @@ module TripleDES where
 import DES
 
 blockEncrypt : ([64],[64],[64],[64]) -> [64]
-blockEncrypt (k1,k2,k3,data) = result where 
+blockEncrypt (k1,k2,k3,data) = result where
     ex     = DES.encrypt k1 data
     dx     = DES.decrypt k2 ex
     result = DES.encrypt k3 dx
+
+blockDecrypt : ([64],[64],[64],[64]) -> [64]
+blockDecrypt (k1,k2,k3,data) = result where
+    ex     = DES.decrypt k3 data
+    dx     = DES.encrypt k2 ex
+    result = DES.decrypt k1 dx
 
 // Test vectors from NIST 800-67
 
@@ -41,3 +47,6 @@ test_B1_3 = blockEncrypt (Key1, Key2, Key3, P3) == C3
 property passesTests = [test_B1_1, test_B1_2, test_B1_3] == ~zero
 
 enc_inv_B1 pt = blockEncrypt (Key1, Key2, Key3, pt) == C1
+
+property consistent k1 k2 k3 msg =
+  blockDecrypt (k1, k2, k3, blockEncrypt (k1, k2, k3, msg)) == msg

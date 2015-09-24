@@ -1,4 +1,16 @@
 import "AES.cry";
 
+let {{
+    key = 0xb437d457f332cca2ed45d4e1af7273da
+    pt = 0xb232e424d6def1c8f85a32229209c565
+    ct = aesEncrypt (pt, key)
+}};
+
 print "Proving injectivity of AES key expansion:";
 time (prove_print abc {{ expandKeyInj }});
+
+print "Inverting AES encryption:";
+time (sat_print abc {{ \msg -> aesEncrypt (msg, key) == ct }});
+
+print "Running AES encryption:";
+time (sat_print abc {{ \c -> aesEncrypt (pt, key) == c }});
