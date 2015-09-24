@@ -15,6 +15,8 @@
     * Can be given denotational semantics in propositional logic
     * Many interesting problems surprisingly tractable
 
+<!-- TODO: more citations -->
+
 # Cryptographic Operations as SAT Problems
 
 * Many primitives naturally made of bit vector operations
@@ -61,7 +63,7 @@ return c;
 
 # Specific tools
 
-* Transalg (Russian Academy of Sciences)
+* Transalg (Russian Academy of Sciences) [@transalg]
 * Cryptol and the Software Analysis Workbench (SAW) (Galois)
     * Cryptol for describing algorithms concisely
     * SAW for proving properties about them
@@ -83,6 +85,10 @@ $\forall x.~P$ or $\exists y.~Q$
 
 \begin{center}
 \aurl{https://github.com/galoisinc/sat2015-crypto}
+\end{center}
+
+\begin{center}
+\filelink{file.saw} $\rightarrow$ \filelink{examples/file.saw}
 \end{center}
 
 # Pseudo-Random Generators
@@ -107,12 +113,6 @@ seed $\rightarrow$ pseudo-random function $\rightarrow$ pseudo-random value
 * Fixed in Android 4.4 (KitKat)
 * Similar weaknesses existed in Debian, FreeBSD at times
 
-<!--
-\begin{center}
-\includegraphics[width=0.85\textwidth]{images/prng-bug.png}
-\end{center}
--->
-
 # Injectivity of PRNG Seeding (cont.)
 
 \begin{center}
@@ -126,6 +126,7 @@ $\forall x, y.~x \neq y \Rightarrow f(x) \neq f(y)$
     * Annotation on system RNG variables, input to SHA-1
     * ABC can find collision (0.017s), prove fixed version (0.010s)
 * Dörre and Klebanov used a different approach to prove fixed code
+  [@dorre2015prng]
     * Information flow annotations on methods using a contract verification tool
       (KeY) and 95 manual proof steps
 
@@ -232,7 +233,7 @@ $\forall x, y.~x \neq y \Rightarrow f(x) \neq f(y)$
 \end{center}
 
 * Provable injectivity of SIMON, Salsa20 key expansion
-    * Several seconds with ABC \infile{simon.saw} \infile{Salsa20.saw}
+    * Around 10-20s with ABC \infile{simon.saw} \infile{Salsa20.saw}
 * Provable injectivity of AES key expansion
     * A little under a minute with ABC \infile{AES.saw}
 * ZUC, a stream cipher for GSM, had a vulnerability
@@ -240,8 +241,8 @@ $\forall x, y.~x \neq y \Rightarrow f(x) \neq f(y)$
     * Provably fixed in ZUC 1.5 (0.6s) \infile{zuc.saw}
     * Originally shown with custom search procedure taking 3m
 * \alert{Not injective} for DES!
+    * Known to have weak keys
     * Can show quickly with ABC (0.08s) \infile{DES.saw}
-    * Unaware of a published attack that uses this fact (TODO)
 
 # Encryption $\rightarrow$ Decryption
 
@@ -252,12 +253,11 @@ $\exists m.~E(m, k) = c$ for known $k$ and $c$
 * Decrypting using encryption code
 * This actually works!
     * Relatively efficient for DES (0.2s), 3DES (0.8s) \infile{DES.saw}
-      \infile{3DES.saw}
+       \infile{3DES.saw}
     * More modern ciphers slower:
         * AES (1.5m) \infile{AES.saw}
         * SIMON (3.6m) \infile{simon.saw}
-        * Speck (TODO: time) \infile{speck.saw}
-
+        * Speck (20s) \infile{speck.saw}
 * Can also run the encryption directly:
     * $\exists c.~E(m, k) = c$ for known $m$ and $k$
     * Usually takes 1/5 to 1/2 the time of decryption
@@ -274,7 +274,7 @@ $\forall m, k.~D(E(m, k), k) = m$
     * DES (4s) \infile{DES.saw}
     * 3DES (8s) \infile {3DES.saw}
     * SIMON (128-256) (6.2m) \infile{simon.saw}
-    * Speck (TODO: time) \infile{speck.saw}
+    * Speck (2.7m) \infile{speck.saw}
 * Hard to show for AES (at least with encodings and solvers we've tried)
   \infile{AES.saw}
 
@@ -291,7 +291,7 @@ $\forall x.~f(x) = g(x)$
     * SAT sweeping helps identify candidate equivalences
         * Especially effective for cryptography
     * Use best available SAT solver for final phase
-* Works on many cryptographic primitives, including AES (~6m)
+* Works on many cryptographic primitives, including AES (~6.4m)
   \infile{AES-eq.saw}
 
 # Equivalence Checking Illustrated
@@ -379,7 +379,7 @@ $\forall x.~f(x) = g(x)$
     * Or any function on a small domain
     * $\exists p.~\llbracket{}p\rrbracket{}(x_{0}) = y_{0} \wedge \dots \wedge
       \llbracket{}p\rrbracket{}(x_{n}) = y_{n}$
-* Fuhs *et al.* found a 23-instruction program for the AES S-box [@fuhs2010sbox]
+* Fuhs *et al.* found a 23-instruction AES S-box program [@fuhs2010sbox]
     * Less than a minute with MiniSat
     * Proving unsatisfiability of 22 instructions took 106 hours (CryptoMiniSat)
 
