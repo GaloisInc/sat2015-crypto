@@ -53,6 +53,12 @@ return c;
 
 \columnsend
 
+# Translating Algorithms to Propositional Logic (Cont.)
+
+\begin{center}
+\includegraphics[height=0.8\textheight]{images/addm.pdf}
+\end{center}
+
 # Specific tools
 
 * Transalg (Russian Academy of Sciences)
@@ -157,9 +163,8 @@ $\exists x.~f(x) = a$ (for some known value $a$)
 
 * Mironov and Zhang analyzed collisions in MD4, MD5, SHA-0
     * Direct translation of MD4 $\rightarrow$ $2^{22}$ solutions in $<$ 1h
-      \infile{MD4.saw}
     * Collision on full MD5 in around 100h
-        * Reduced rounds much easier \infile{MD5.saw}
+        * Reduced rounds much easier (25 in 38s with ABC) \infile{MD5.saw}
         * Used differential path derived manually (more on this later)
     * Estimated around 3 million (2006-era) CPU hours for SHA-0
 * No known collisions on SHA-1 from this, but it may be a matter of time
@@ -174,10 +179,10 @@ $\exists x.~f(x) = a$ (for some known value $a$)
 
 Algorithm        Rounds    Security margin    Code
 ---------        ------    ---------------    ------------------------
-SHA-1                21       74% (21/80)     \filelink{SHA-0-1.saw}
-SHA-256              16       75% (16/64)     \filelink{SHA265.saw}
-Keccak-256            2       92% (2/24)      TODO
-BLAKE-256             1       93% (1/14)      \filelink{blake256.saw}
+SHA-1                21       74% (21/80)     \filelink{SHA-0-1.saw} (36s)
+SHA-256              16       75% (16/64)     \filelink{SHA265.saw} (1.3s)
+Keccak-256            2       92% (2/24)      N/A
+BLAKE-256             1       93% (1/14)      \filelink{Blake256.saw} (17s)
 Groestl-256         0.5       95% (0.5/10)    N/A
 JH-256                2       96% (2/42)      N/A
 Skein-512-256         1       99% (1/72)      N/A
@@ -231,12 +236,12 @@ $\forall x, y.~x \neq y \Rightarrow f(x) \neq f(y)$
 * Provable injectivity of AES key expansion
     * A little under a minute with ABC \infile{AES.saw}
 * ZUC, a stream cipher for GSM, had a vulnerability
-    * Key expansion not injective in ZUC 1.4 (TODO: time) \infile{zuc.saw}
-    * Provably fixed in ZUC 1.5 (TODO: time) \infile{zuc.saw}
+    * Key expansion not injective in ZUC 1.4 (0.5s) \infile{zuc.saw}
+    * Provably fixed in ZUC 1.5 (0.6s) \infile{zuc.saw}
     * Originally shown with custom search procedure taking 3m
 * \alert{Not injective} for DES!
-    * Can show in a fraction of a second \infile{DES.saw}
-    * Unaware of a published attack that uses this fact
+    * Can show quickly with ABC (0.08s) \infile{DES.saw}
+    * Unaware of a published attack that uses this fact (TODO)
 
 # Encryption $\rightarrow$ Decryption
 
@@ -246,14 +251,16 @@ $\exists m.~E(m, k) = c$ for known $k$ and $c$
 
 * Decrypting using encryption code
 * This actually works!
-    * Relatively efficient for DES, 3DES, SIMON \infile{DES.saw}
-      \infile{3DES.saw} \infile{simon.saw}
-    * Takes ~1.5min for one block of AES \infile{aes.saw}
+    * Relatively efficient for DES (0.2s), 3DES (0.8s) \infile{DES.saw}
+      \infile{3DES.saw}
+    * More modern ciphers slower:
+        * AES (1.5m) \infile{AES.saw}
+        * SIMON (3.6m) \infile{simon.saw}
+        * Speck (TODO: time) \infile{speck.saw}
 
 * Can also run the encryption directly:
     * $\exists c.~E(m, k) = c$ for known $m$ and $k$
-    * Also around ~1.5min for AES \infile{aes.saw}
-    <!-- TODO: DES, 3DES, SIMON -->
+    * Usually takes 1/5 to 1/2 the time of decryption
     * Not really useful, but illustrates the flexibility of SAT
 
 # Block Cipher Consistency
@@ -263,10 +270,10 @@ $\forall m, k.~D(E(m, k), k) = m$
 \end{center}
 
 * For a block cipher with encryption function $E$, decryption $D$
-* Easy to show for many ciphers
-    * DES (TODO: time) \infile{DES.saw}
-    * 3DES (TODO: time) \infile{3DES.saw}
-    * SIMON (TODO: time) \infile{simon.saw}
+* Feasible to show for many ciphers
+    * DES (4s) \infile{DES.saw}
+    * 3DES (8s) \infile {3DES.saw}
+    * SIMON (128-256) (6.2m) \infile{simon.saw}
     * Speck (TODO: time) \infile{speck.saw}
 * Hard to show for AES (at least with encodings and solvers we've tried)
   \infile{AES.saw}
@@ -284,12 +291,10 @@ $\forall x.~f(x) = g(x)$
     * SAT sweeping helps identify candidate equivalences
         * Especially effective for cryptography
     * Use best available SAT solver for final phase
-* Works on many cryptographic primitives, including AES (~10m)
-  \infile{AES-eq.saw} (TODO)
+* Works on many cryptographic primitives, including AES (~6m)
+  \infile{AES-eq.saw}
 
 # Equivalence Checking Illustrated
-
-Image credit: A. Biere, *SAT in Hardware Formal Verification*
 
 \pandocslide{1}{\includegraphics[height=0.9\textheight]{images/Block1.pdf}}
 \pandocslide{2}{\includegraphics[height=0.9\textheight]{images/Block2.pdf}}
@@ -308,10 +313,8 @@ Image credit: A. Biere, *SAT in Hardware Formal Verification*
     * \alert{If} we know all inputs and outputs
 * Used for checking equivalence between Cryptol and Java ECDSA
     * Takes around 5 minutes to run
-    * Takes ~1500 lines of script
+    * Takes ~1500 lines of script (mostly I/O mapping, a few rewrite rules)
     * ABC for leaves, rewriting + Z3 for higher layers
-
-<!-- TODO: smoother transition from Cryptol stuff to not Cryptol stuff -->
 
 # Linear Cryptanalysis
 
@@ -321,7 +324,7 @@ Image credit: A. Biere, *SAT in Hardware Formal Verification*
     * Where *linear* here means made up entirely of XOR operations
 * Any time the encryption function agrees with a linear function too often, this
   can ease cryptanalysis
-* #SAT can be used to count how often it behaves linearly
+* Can use #SAT to count how often it behaves linearly
   
 # Differential Cryptanalysis
 
@@ -330,14 +333,13 @@ Image credit: A. Biere, *SAT in Hardware Formal Verification*
 * Disproportional effects can be exploitable
 * A \alert{differential characteristic} is a set of differences as they traverse
   a path through the algorithm
-* #SAT can be used to calculuate the distributions of differential
-  characteristics
+* Can use #SAT to calculuate the distributions of differential characteristics
 
 # Cryptanalysis of SIMON
 
 * SIMON is a lightweight block cipher published recently
 * Kölbl *et al.* used SAT for linear and differential cryptanlysis of SIMON
-  (TODO: cite) \infile{simon-diff.saw}
+  [@kolbl2015simon] \infile{simon-diff.saw}
 * Using #SAT to calculate differential characteristic distributions
 * Not direct analysis of code, but of manually-derived simplification
 * Serves as an additonal tool for cryptanalysis, not push-putton
@@ -365,7 +367,7 @@ Image credit: A. Biere, *SAT in Hardware Formal Verification*
 * More information than just inputs or outputs
 * Can use \alert{any internal variable} in the algorithm
 * Hamming weights plus a handful of $(m, c)$ pairs enough to recover AES key
-  (TODO: review and cite)
+  [@mohamed2012improved-sc]
 
 # Creating Code: Optimal S-Boxes
 
@@ -377,7 +379,7 @@ Image credit: A. Biere, *SAT in Hardware Formal Verification*
     * Or any function on a small domain
     * $\exists p.~\llbracket{}p\rrbracket{}(x_{0}) = y_{0} \wedge \dots \wedge
       \llbracket{}p\rrbracket{}(x_{n}) = y_{n}$
-* Fuhs *et al.* found a 23-instruction program for the AES S-box (TODO: cite)
+* Fuhs *et al.* found a 23-instruction program for the AES S-box [@fuhs2010sbox]
     * Less than a minute with MiniSat
     * Proving unsatisfiability of 22 instructions took 106 hours (CryptoMiniSat)
 
@@ -440,3 +442,6 @@ Image credit: A. Biere, *SAT in Hardware Formal Verification*
 \begin{center}
 \aurl{https://github.com/galoisinc/sat2015-crypto}
 \end{center}
+
+# References
+
