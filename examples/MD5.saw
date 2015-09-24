@@ -1,0 +1,7 @@
+import "MD5.cry";
+
+let {{ collision k1 k2 =
+         k1 != k2 &&
+         computeInitialNRounds 25 k1 == computeInitialNRounds 25 k2 }};
+
+time (sat_print abc {{ collision }});

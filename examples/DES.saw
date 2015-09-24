@@ -1,0 +1,6 @@
+import "DES.cry";
+
+print "Inverting DES encryption:";
+// pt should be 0x56789ABCDEF01234
+time (sat_print abc {{ \pt -> DES.encrypt 0x0123456789ABCDEF pt ==
+                              0x450335a8a7123f3c }});

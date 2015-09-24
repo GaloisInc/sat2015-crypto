@@ -1,0 +1,4 @@
+import "TripleDES.cry";
+
+print "Inverting 3DES encryption:";
+time (sat_print abc {{ enc_inv_B1 }});

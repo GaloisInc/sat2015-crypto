@@ -1,0 +1,4 @@
+import "AES.cry";
+
+print "Proving injectivity of AES key expansion:";
+time (prove_print abc {{ expandKeyInj }});

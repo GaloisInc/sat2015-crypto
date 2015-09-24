@@ -1,0 +1,8 @@
+jb <- read_aig "android-prng/jellybean_prng.aig";
+kk <- read_aig "android-prng/kitkat_prng.aig";
+
+print "Demonstrating non-injectivity of JellyBean version:";
+time (sat_print abc {{ \x1 x2 -> x1 != x2 && jb x1 == jb x2 }});
+
+print "Proving injectivity of KitKat verion:";
+time (prove_print abc {{ \x1 x2 -> x1 == x2 || kk x1 != kk x2 }});

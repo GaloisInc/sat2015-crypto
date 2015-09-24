@@ -1,0 +1,10 @@
+import "ZUC.cry" as zuc15;
+import "ZUC14.cry" as zuc14;
+
+print "Proving ZUC v1.5 resistant to collision attack:";
+time (prove_print abc {{ zuc15::ZUC_isResistantToCollisionAttack }});
+
+print "Proving ZUC v1.4 vulnerable to collision attack:";
+time (sat_print abc {{
+  \x -> zuc14::ZUC_isResistantToCollisionAttack x == False
+}});

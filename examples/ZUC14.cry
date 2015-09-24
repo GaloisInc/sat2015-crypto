@@ -9,10 +9,11 @@
 // Note that the ZUC test vectors below will not work for version 1.4, as the
 // old test vectors are no longer published.
 
-module ZUC15 where
+module ZUC14 where
 
+// This is identical to ZUC.cry except that the following is False
 version1_5 : Bit
-version1_5 = True
+version1_5 = False
 
 // addition in GF(2^31-1) over a list of terms
 add : {a} (fin a) => [a][31] -> [31]
