@@ -3,6 +3,10 @@
 \setbeamertemplate{caption}[numbered]
 \setbeamertemplate{caption label separator}{:}
 \setbeamercolor{caption name}{fg=normal text.fg}
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+\setbeamertemplate{bibliography entry title}{}
+\setbeamertemplate{bibliography entry location}{}
+\setbeamertemplate{bibliography entry note}{}
 \usepackage{amssymb,amsmath}
 \usepackage{ifxetex,ifluatex}
 \usepackage{fixltx2e} % provides \textsubscript
@@ -222,7 +226,7 @@ return c;
 \begin{itemize}
 \tightlist
 \item
-  Transalg (Russian Academy of Sciences) {[}@transalg{]}
+  Transalg (Russian Academy of Sciences) \cite{transalg}
 \item
   Cryptol and the Software Analysis Workbench (SAW) (Galois)
 
@@ -343,7 +347,7 @@ $\forall x, y.~x \neq y \Rightarrow f(x) \neq f(y)$
   \end{itemize}
 \item
   Dörre and Klebanov used a different approach to prove fixed code
-  {[}@dorre2015prng{]}
+  \cite{dorre2015prng}
 
   \begin{itemize}
   \tightlist
@@ -817,7 +821,7 @@ $\forall x.~f(x) = g(x)$
   SIMON is a lightweight block cipher published recently
 \item
   Kölbl \emph{et al.} used SAT for linear and differential cryptanlysis
-  of SIMON {[}@kolbl2015simon{]} \infile{simon-diff.saw}
+  of SIMON \cite{kolbl2015simon} \infile{simon-diff.saw}
 \item
   Using \#SAT to calculate differential characteristic distributions
 \item
@@ -911,7 +915,7 @@ $\forall x.~f(x) = g(x)$
   \end{itemize}
 \item
   Fuhs \emph{et al.} found a 23-instruction AES S-box program
-  {[}@fuhs2010sbox{]}
+  \cite{fuhs2010sbox}
 
   \begin{itemize}
   \tightlist
@@ -962,7 +966,6 @@ $\forall x.~f(x) = g(x)$
 \begin{frame}{Other Examples}
 
 \begin{itemize}
-\tightlist
 \item
   Cryptographic protocol analysis
 \item
@@ -970,7 +973,9 @@ $\forall x.~f(x) = g(x)$
 \item
   Differential fault analysis
 \item
-  TODO: more!
+  Constructing new encryption schemes
+\item
+  What's next?
 \end{itemize}
 
 \end{frame}
@@ -1111,8 +1116,9 @@ $\forall x.~f(x) = g(x)$
 
 \end{frame}
 
-\begin{frame}{References}
-
+\begin{frame}[allowframebreaks]{References}
+  \bibliographystyle{plain}
+  \bibliography{talk}
 \end{frame}
 
 \end{document}
