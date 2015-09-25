@@ -1,5 +1,14 @@
 // Author: Sean Weaver <weaversa@gmail.com>
 
+/*
+$ cryptol simon-diff.cry
+Main> :s smtfile=test.smt2
+Main> :s prover=offline
+Main> :sat \zs -> diff`{13} 45 zs
+
+$ abc -c "%read test.smt2; %blast; &fraig; &satenum -v"
+*/
+
 //r = 13
 diff : {r} (fin r, r>=1) => [32] -> [r][16] -> Bit
 diff wi zs = ((xr == xs@`r) && (yr == ys@`r) && p0 && p1 && (wf == wi))
